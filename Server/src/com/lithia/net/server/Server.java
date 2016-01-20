@@ -5,6 +5,8 @@ import java.net.BindException;
 import java.net.ServerSocket;
 import java.net.Socket;
 
+import javax.swing.JOptionPane;
+
 import com.lithia.net.server.ClientHandler.Client;
 import com.lithia.net.util.Logger;
 import com.lithia.net.util.ReaderUtil;
@@ -59,7 +61,7 @@ public class Server
 	{
 		ReaderUtil.debug = Boolean.parseBoolean(args[0]);
 		WriterUtil.debug = Boolean.parseBoolean(args[0]);
-		int port = 9000;
+		int port = Integer.parseInt(JOptionPane.showInputDialog("Enter port:"));
 		
 		Logger.log(prefix, "Creating server on port " + port);
 

@@ -8,6 +8,8 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.util.Scanner;
 
+import javax.swing.JOptionPane;
+
 import com.lithia.net.util.Logger;
 import com.lithia.net.util.ReaderUtil;
 import com.lithia.net.util.WriterUtil;
@@ -31,16 +33,16 @@ public class Client
 		
 		try
 		{
-			int port = 9000;
+			int port = Integer.parseInt(JOptionPane.showInputDialog("Enter Port:"));
 			Logger.log(prefix, "Connecting on port " + port + ".");
-			s = new Socket(InetAddress.getLocalHost(), port);
+			s = new Socket(JOptionPane.showInputDialog("Enter IP:"), port);
 			Logger.log(prefix, "Socket created, connection complete.");
 		}
 		catch(Exception e)
 		{
 			e.printStackTrace();
 		}
-		
+
 		try
 		{
 			Logger.log(prefix, "Listening for client assignment from server...");
