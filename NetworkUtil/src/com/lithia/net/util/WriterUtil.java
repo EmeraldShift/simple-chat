@@ -14,18 +14,15 @@ public class WriterUtil
 	
 	public static void write(Socket s, String o) throws IOException
 	{
-		if(debug) Logger.log(prefix, "Fetching writer...");
 		if(!writers.containsKey(s))
 		{
-			if(debug) Logger.log(prefix, "No writer found, creating one.");
 			writers.put(s, new PrintWriter(s.getOutputStream()));
 		}
-		if(debug) Logger.log(prefix, "Writer found, writing [" + o + "] to socket.");
+		
+		if(debug) Logger.log(prefix, "Writing [" + o + "] to socket.");
 		
 		writers.get(s).println(o);
-		if(debug) Logger.log(prefix, "...complete!");
 		writers.get(s).flush();
-		if(debug) Logger.log(prefix, "Writer flushed, write complete.");
 	}
 	
 }

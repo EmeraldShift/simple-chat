@@ -51,7 +51,7 @@ public class Server
 		Logger.log(prefix, "Connection attempt found, processing...");
 		int id;
 		final Client client = ClientHandler.getInstance()
-				.addClient(id = ClientHandler.Client.generateNewClientID(), socket, "client" + id);
+				.addClient(id = ClientHandler.Client.generateNewClientID(), socket);
 		
 		Logger.log(prefix, "Creating client with id " + id);
 		new Thread(() -> client.run()).start();

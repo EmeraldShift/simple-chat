@@ -32,9 +32,9 @@ public class ClientHandler
 		return instance;
 	}
 
-	public Client addClient(int id, Socket socket, String name)
+	public Client addClient(int id, Socket socket)
 	{
-		Client client = new Client(name, socket, id);
+		Client client = new Client(socket, id);
 		client.handler = this;
 
 		clients.add(client);
@@ -54,10 +54,9 @@ public class ClientHandler
 		BufferedReader in;
 		PrintWriter out;
 
-		public Client(String name, Socket socket, int id)
+		public Client(Socket socket, int id)
 		{
 			Logger.log(prefix, "Generating client token...");
-			this.name = name;
 			this.socket = socket;
 			this.id = id;
 
@@ -88,7 +87,6 @@ public class ClientHandler
 
 			Logger.log(prefix, "Client initialized.");
 			
-			int tick = 0;
 			try
 			{
 				Logger.log(prefix, "Listening on client socket...");
@@ -97,14 +95,21 @@ public class ClientHandler
 				{
 					String line = read(socket);
 					
-					if(tick == 0) write(socket, "ymc");
-
-					if(line.length() > 0) Logger.log(prefix, "Received: [" + line + "]");
-
+					if(line.contains("name:"))
+					{
+						this.name = line.substring(5);
+					}
+					
 					if (line.contains("abort"))
 					{
 						Logger.log(prefix, "Client " + line.substring(6) + " disconnected.");
 						socket.close();
+					}
+					
+					if(line.equals("ping"))
+					{
+						write(socket, "pong");
+						if(WriterUtil.debug) Logger.log("Ping", "Received ping from " + name + ".");
 					}
 					
 					if(line.contains(":chat:"))
@@ -119,15 +124,30 @@ public class ClientHandler
 						}
 					}
 					
-					if(socket.isClosed()) active = false;
+					if(socket.isClosed() || !socket.isConnected() || !socket.isBound()) active = false;
 					
 					Thread.sleep(50);
-					tick++;
+				}
+				
+				for(Client c : handler.clients)
+				{
+					write(c.socket, "chdc:" + name);
 				}
 			}
 			catch (Exception e)
 			{
 				e.printStackTrace();
+			}
+			finally
+			{
+				try
+				{
+					socket.close();
+				}
+				catch(IOException e)
+				{
+					e.printStackTrace();
+				}
 			}
 
 			Logger.log(prefix, "Client with id " + id + " terminated.");
@@ -159,15 +179,17 @@ public class ClientHandler
 	{
 		Socket s = c.socket;
 
-		Logger.log(prefix, "Creating handshake: chpr:" + c.name + "|" + c.id);
+		Logger.log(prefix, "Creating handshake: chpr:" + c.id);
 		
-		write(s, "chpr:" + c.name + "|" + c.id);
+		write(s, "chpr:" + c.id);
 
 		String line;
-		while ((line = read(s)) == null || !line.equals(c.name + "|" + c.id))
+		while ((line = read(s)).length() == 0)
 		{
-			Thread.sleep(20);
+			Thread.sleep(1000);
 		}
+		
+		c.name = line;
 		
 		Logger.log(prefix, "Received heartbeat, handshake complete.");
 		Logger.log(prefix, line + " connected.");
