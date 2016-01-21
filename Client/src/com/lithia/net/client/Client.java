@@ -74,7 +74,6 @@ public class Client
 				}
 				catch(Exception e)
 				{
-					e.printStackTrace();
 				}
 			};
 			
@@ -161,6 +160,7 @@ public class Client
 			try
 			{
 				if(socket != null) socket.close();
+				System.in.close();
 				chatThread.join();
 			}
 			catch (IOException | InterruptedException e)
@@ -169,7 +169,6 @@ public class Client
 			}
 		}
 		
-		scan.close();
 		System.exit(0);
 	}
 }
