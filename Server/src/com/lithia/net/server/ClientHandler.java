@@ -117,12 +117,20 @@ public class ClientHandler
 						String name = line.substring(0, line.indexOf('|'));
 						String msg = line.substring(line.indexOf(':') + 6);
 						
+						if(msg.equals("quit"))
+						{
+							active = false;
+							write(socket, "quit");
+							continue;
+						}
+
 						for(Client c : handler.clients)
 						{
 							if(WriterUtil.debug) Logger.log(prefix, "Writing to " + c.name + "'s socket.");
 							write(c.socket, "chat:" + name + ":" + msg);
 						}
 					}
+					
 					
 					if(socket.isClosed() || !socket.isConnected() || !socket.isBound()) active = false;
 					

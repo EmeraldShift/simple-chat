@@ -146,6 +146,11 @@ public class Client
 					active = false;
 				}
 				
+				if(line.equals("quit"))
+				{
+					active = false;
+				}
+				
 				if(socket.isClosed() || !socket.isConnected() || !socket.isBound()) active = false;
 				
 				Thread.sleep(50);
