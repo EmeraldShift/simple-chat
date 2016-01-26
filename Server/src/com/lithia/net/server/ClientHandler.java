@@ -17,9 +17,9 @@ public class ClientHandler
 
 	private static ClientHandler instance;
 	private Vector<Client> clients;
-	
+
 	private static String prefix = "Client Handler";
-	
+
 	private ClientHandler()
 	{
 		clients = new Vector<>();
@@ -41,6 +41,31 @@ public class ClientHandler
 		return client;
 	}
 
+	public void processCommand(String command)
+	{
+		if (command.contains("kick"))
+		{
+			String name = command.split(" ")[1];
+
+			for (Client c : clients)
+			{
+				if (c.name.equalsIgnoreCase(name))
+				{
+					c.active = false;
+					
+					try
+					{
+						write(c.socket, "quit");
+					}
+					catch (IOException e)
+					{
+						e.printStackTrace();
+					}
+				}
+			}
+		}
+	}
+
 	public static class Client implements Runnable
 	{
 		private static int index;
@@ -50,7 +75,7 @@ public class ClientHandler
 		private int id;
 		private volatile boolean active;
 		private ClientHandler handler;
-		
+
 		BufferedReader in;
 		PrintWriter out;
 
@@ -69,10 +94,10 @@ public class ClientHandler
 			try
 			{
 				handshake(this);
-				
-				for(Client c : handler.clients)
+
+				for (Client c : handler.clients)
 				{
-					if(WriterUtil.debug) Logger.log(prefix, "Writing to " + c.name + "'s socket.");
+					if (WriterUtil.debug) Logger.log(prefix, "Writing to " + c.name + "'s socket.");
 					write(c.socket, "cnct:" + name);
 				}
 			}
@@ -86,58 +111,57 @@ public class ClientHandler
 			}
 
 			Logger.log(prefix, "Client initialized.");
-			
+
 			try
 			{
 				Logger.log(prefix, "Listening on client socket...");
-				
+
 				while (active)
 				{
 					String line = read(socket);
-					
-					if(line.contains("name:"))
+
+					if (line.contains("name:"))
 					{
 						this.name = line.substring(5);
 					}
-					
+
 					if (line.contains("abort"))
 					{
 						Logger.log(prefix, "Client " + line.substring(6) + " disconnected.");
 						socket.close();
 					}
-					
-					if(line.equals("ping"))
+
+					if (line.equals("ping"))
 					{
 						write(socket, "pong");
-						if(WriterUtil.debug) Logger.log("Ping", "Received ping from " + name + ".");
+						if (WriterUtil.debug) Logger.log("Ping", "Received ping from " + name + ".");
 					}
-					
-					if(line.contains(":chat:"))
+
+					if (line.contains(":chat:"))
 					{
 						String name = line.substring(0, line.indexOf('|'));
 						String msg = line.substring(line.indexOf(':') + 6);
-						
-						if(msg.equals("quit"))
+
+						if (msg.equals("quit"))
 						{
 							active = false;
 							write(socket, "quit");
 							continue;
 						}
 
-						for(Client c : handler.clients)
+						for (Client c : handler.clients)
 						{
-							if(WriterUtil.debug) Logger.log(prefix, "Writing to " + c.name + "'s socket.");
+							if (WriterUtil.debug) Logger.log(prefix, "Writing to " + c.name + "'s socket.");
 							write(c.socket, "chat:" + name + ":" + msg);
 						}
 					}
-					
-					
-					if(socket.isClosed() || !socket.isConnected() || !socket.isBound()) active = false;
-					
+
+					if (socket.isClosed() || !socket.isConnected() || !socket.isBound()) active = false;
+
 					Thread.sleep(50);
 				}
-				
-				for(Client c : handler.clients)
+
+				for (Client c : handler.clients)
 				{
 					write(c.socket, "chdc:" + name);
 				}
@@ -152,7 +176,7 @@ public class ClientHandler
 				{
 					socket.close();
 				}
-				catch(IOException e)
+				catch (IOException e)
 				{
 					e.printStackTrace();
 				}
@@ -165,12 +189,12 @@ public class ClientHandler
 		{
 			return index++;
 		}
-		
+
 		public void setHandler(ClientHandler handler)
 		{
 			this.handler = handler;
 		}
-		
+
 		public String getName()
 		{
 			return name;
@@ -188,7 +212,7 @@ public class ClientHandler
 		Socket s = c.socket;
 
 		Logger.log(prefix, "Creating handshake: chpr:" + c.id);
-		
+
 		write(s, "chpr:" + c.id);
 
 		String line;
@@ -196,9 +220,9 @@ public class ClientHandler
 		{
 			Thread.sleep(1000);
 		}
-		
+
 		c.name = line;
-		
+
 		Logger.log(prefix, "Received heartbeat, handshake complete.");
 		Logger.log(prefix, line + " connected.");
 	}

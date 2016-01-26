@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.BindException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Scanner;
 
 import javax.swing.JOptionPane;
 
@@ -19,6 +20,8 @@ public class Server
 	int port;
 	
 	private static String prefix = "Server";
+	private static Scanner scan = new Scanner(System.in);
+	private static Thread commandThread;
 
 	public Server(int port) throws IOException
 	{
@@ -27,6 +30,24 @@ public class Server
 			Logger.log(prefix, "Creating socket...");
 			socket = new ServerSocket(port);
 			Logger.log(prefix, "...complete!");
+			
+			Runnable r = () ->
+			{
+				try
+				{
+					String chat;
+					while((chat = scan.nextLine()) != null)
+					{
+						ClientHandler.getInstance().processCommand(chat);
+					}
+				}
+				catch(Exception e)
+				{
+				}
+			};
+			
+			commandThread = new Thread(r, "Command");
+			commandThread.start();
 		}
 		catch(BindException e)
 		{
