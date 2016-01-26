@@ -33,16 +33,19 @@ public class Server
 			
 			Runnable r = () ->
 			{
-				try
+				while(true)
 				{
-					String chat;
-					while((chat = scan.nextLine()) != null)
+					try
 					{
-						ClientHandler.getInstance().processCommand(chat);
+						String chat;
+						while((chat = scan.nextLine()) != null)
+						{
+							ClientHandler.getInstance().processCommand(chat);
+						}
 					}
-				}
-				catch(Exception e)
-				{
+					catch(Exception e)
+					{
+					}
 				}
 			};
 			

@@ -64,6 +64,15 @@ public class ClientHandler
 				}
 			}
 		}
+		else if(command.contains("list"))
+		{
+			Logger.log("Chat", "There are " + clients.size() + " clients.");
+			
+			for(Client c : clients)
+			{
+				Logger.log("Client", c.name);
+			}
+		}
 	}
 
 	public static class Client implements Runnable
@@ -116,6 +125,9 @@ public class ClientHandler
 			{
 				Logger.log(prefix, "Listening on client socket...");
 
+				long chatTime = 0;
+				String lastChat = "";
+
 				while (active)
 				{
 					String line = read(socket);
@@ -136,11 +148,34 @@ public class ClientHandler
 						write(socket, "pong");
 						if (WriterUtil.debug) Logger.log("Ping", "Received ping from " + name + ".");
 					}
+					
 
 					if (line.contains(":chat:"))
 					{
 						String name = line.substring(0, line.indexOf('|'));
 						String msg = line.substring(line.indexOf(':') + 6);
+						
+						if(msg.length() > 150 || msg.length() == 0 || System.currentTimeMillis() - chatTime < 2000 || lastChat.equalsIgnoreCase(msg))
+						{
+							write(socket, "chat:Server:You cannot chat at this time.");
+							
+							if(msg.length() > 150 || msg.length() == 0)
+							{
+								write(socket, "chat:Server:Your message must be between 1-150 characters.");
+							}
+							else if(lastChat.equalsIgnoreCase(msg))
+							{
+								write(socket, "chat:Server:You may not repeat the same message twice.");
+							}
+							else
+							{
+								write(socket, "chat:Server:You must wait 2 seconds between messages.");
+							}
+							
+							continue;
+						}
+						
+						chatTime = System.currentTimeMillis();
 
 						if (msg.equals("quit"))
 						{
