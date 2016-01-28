@@ -91,7 +91,7 @@ public class Client
 					Logger.log(prefix, "Joined server with id " + id + ".");
 					
 					name = JOptionPane.showInputDialog("Desired client name:");
-					if(name.length() == 0) name = "Anonymous";
+					if(name.length() == 0) name = "Anonymous-" + id;
 
 					Logger.log(prefix, "Set name to " + name + ".");
 					

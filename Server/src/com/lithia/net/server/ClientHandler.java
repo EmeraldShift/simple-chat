@@ -52,7 +52,7 @@ public class ClientHandler
 				if (c.name.equalsIgnoreCase(name))
 				{
 					c.active = false;
-					
+
 					try
 					{
 						write(c.socket, "quit");
@@ -64,14 +64,21 @@ public class ClientHandler
 				}
 			}
 		}
-		else if(command.contains("list"))
+		else if (command.contains("list"))
 		{
 			Logger.log("Chat", "There are " + clients.size() + " clients.");
 			
-			for(Client c : clients)
+			int conn = 0;
+			for (Client c : clients)
 			{
-				Logger.log("Client", c.name);
+				if(c.name != null)
+				{
+					Logger.log("Client", c.name);
+				}
+				else conn++;
 			}
+
+			Logger.log("Client", "+ " + conn + " connecting.");
 		}
 	}
 
@@ -94,7 +101,6 @@ public class ClientHandler
 			this.socket = socket;
 			this.id = id;
 
-			active = true;
 			Logger.log(prefix, "...complete!");
 		}
 
@@ -102,13 +108,17 @@ public class ClientHandler
 		{
 			try
 			{
-				handshake(this);
+				ClientHandler.getInstance().handshake(this);
 
-				for (Client c : handler.clients)
+				if (active)
 				{
-					if (WriterUtil.debug) Logger.log(prefix, "Writing to " + c.name + "'s socket.");
-					write(c.socket, "cnct:" + name);
+					for (Client c : handler.clients)
+					{
+						if (WriterUtil.debug) Logger.log(prefix, "Writing to " + c.name + "'s socket.");
+						write(c.socket, "cnct:" + name);
+					}
 				}
+
 			}
 			catch (InterruptedException e)
 			{
@@ -121,13 +131,13 @@ public class ClientHandler
 
 			Logger.log(prefix, "Client initialized.");
 
-			try
+			if (active) try
 			{
 				Logger.log(prefix, "Listening on client socket...");
 
 				long chatTime = 0;
 				String lastChat = "";
-
+				
 				while (active)
 				{
 					String line = read(socket);
@@ -148,22 +158,21 @@ public class ClientHandler
 						write(socket, "pong");
 						if (WriterUtil.debug) Logger.log("Ping", "Received ping from " + name + ".");
 					}
-					
 
 					if (line.contains(":chat:"))
 					{
 						String name = line.substring(0, line.indexOf('|'));
 						String msg = line.substring(line.indexOf(':') + 6);
-						
-						if(msg.length() > 150 || msg.length() == 0 || System.currentTimeMillis() - chatTime < 2000 || lastChat.equalsIgnoreCase(msg))
+						msg = msg.trim();
+
+						if (msg.length() > 100 || msg.length() == 0 || System.currentTimeMillis() - chatTime < 2000
+								|| lastChat.equalsIgnoreCase(msg))
 						{
-							write(socket, "chat:Server:You cannot chat at this time.");
-							
-							if(msg.length() > 150 || msg.length() == 0)
+							if (msg.length() > 100 || msg.length() == 0)
 							{
-								write(socket, "chat:Server:Your message must be between 1-150 characters.");
+								write(socket, "chat:Server:Your message must be between 1-100 characters.");
 							}
-							else if(lastChat.equalsIgnoreCase(msg))
+							else if (lastChat.equalsIgnoreCase(msg))
 							{
 								write(socket, "chat:Server:You may not repeat the same message twice.");
 							}
@@ -171,11 +180,12 @@ public class ClientHandler
 							{
 								write(socket, "chat:Server:You must wait 2 seconds between messages.");
 							}
-							
+
 							continue;
 						}
-						
+
 						chatTime = System.currentTimeMillis();
+						lastChat = msg;
 
 						if (msg.equals("quit"))
 						{
@@ -195,11 +205,6 @@ public class ClientHandler
 
 					Thread.sleep(50);
 				}
-
-				for (Client c : handler.clients)
-				{
-					write(c.socket, "chdc:" + name);
-				}
 			}
 			catch (Exception e)
 			{
@@ -209,6 +214,11 @@ public class ClientHandler
 			{
 				try
 				{
+					for (Client c : handler.clients)
+					{
+						write(c.socket, "chdc:" + name);
+					}
+					
 					socket.close();
 				}
 				catch (IOException e)
@@ -216,8 +226,9 @@ public class ClientHandler
 					e.printStackTrace();
 				}
 			}
-
+			
 			Logger.log(prefix, "Client with id " + id + " terminated.");
+			ClientHandler.getInstance().clients.remove(this);
 		}
 
 		public static int generateNewClientID()
@@ -242,7 +253,7 @@ public class ClientHandler
 
 	}
 
-	private static void handshake(Client c) throws InterruptedException, IOException
+	private void handshake(Client c) throws InterruptedException, IOException
 	{
 		Socket s = c.socket;
 
@@ -251,15 +262,56 @@ public class ClientHandler
 		write(s, "chpr:" + c.id);
 
 		String line;
-		while ((line = read(s)).length() == 0)
+		long timeout = System.currentTimeMillis();
+		while ((line = read(s)).length() == 0 || line.equals("ping") || line.contains(":") || line.contains("|") || line.length() > 16 || match(line) || System.currentTimeMillis() - timeout > 15000)
 		{
+			if(line.contains(":") || line.contains("|"))
+			{
+				write(s, "chat:Server:Your name contains invalid characters.");
+				write(s, "chat:Server:Please restart your client.");
+				return;
+			}
+			if (line.length() > 16)
+			{
+				write(s, "chat:Server:Your name cannot exceed 16 characters.");
+				write(s, "chat:Server:Please restart your client.");
+				return;
+			}
+			
+			if(match(line))
+			{
+				write(s, "chat:Server:Your name cannot match that of another user.");
+				write(s, "chat:Server:Please restart your client.");
+				return;
+			}
+			
+			if(System.currentTimeMillis() - timeout > 15000)
+			{
+				write(s, "chat:Server:You took to long to log in.");
+				write(s, "chat:Server:Please restart your client.");
+				return;
+			}
+			
 			Thread.sleep(1000);
 		}
+		
 
 		c.name = line;
+		c.active = true;
 
 		Logger.log(prefix, "Received heartbeat, handshake complete.");
 		Logger.log(prefix, line + " connected.");
+	}
+	
+	private boolean match(String name)
+	{
+		for(Client c : clients)
+		{
+			if(c.name == null) continue;
+			if(c.name.equalsIgnoreCase(name)) return true;
+		}
+		
+		return false;
 	}
 
 }
