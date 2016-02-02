@@ -165,12 +165,12 @@ public class ClientHandler
 						String msg = line.substring(line.indexOf(':') + 6);
 						msg = msg.trim();
 
-						if (msg.length() > 100 || msg.length() == 0 || System.currentTimeMillis() - chatTime < 2000
+						if (msg.length() > 250 || msg.length() == 0 || System.currentTimeMillis() - chatTime < 2000
 								|| lastChat.equalsIgnoreCase(msg))
 						{
-							if (msg.length() > 100 || msg.length() == 0)
+							if (msg.length() > 250 || msg.length() == 0)
 							{
-								write(socket, "chat:Server:Your message must be between 1-100 characters.");
+								write(socket, "chat:Server:Your message must be between 1-250 characters.");
 							}
 							else if (lastChat.equalsIgnoreCase(msg))
 							{

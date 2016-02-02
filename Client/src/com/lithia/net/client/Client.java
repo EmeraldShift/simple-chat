@@ -1,162 +1,180 @@
 package com.lithia.net.client;
 
-import static com.lithia.net.util.ReaderUtil.*;
-import static com.lithia.net.util.WriterUtil.*;
+import static com.lithia.net.util.ReaderUtil.read;
+import static com.lithia.net.util.WriterUtil.write;
 
-import java.io.*;
-import java.net.*;
-import java.util.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Container;
+import java.awt.Font;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.IOException;
+import java.net.Socket;
 
-import javax.swing.*;
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
 
-import com.lithia.net.util.*;
+import com.lithia.net.util.ReaderUtil;
+import com.lithia.net.util.WriterUtil;
 
-public class Client
+public class Client extends JFrame implements ActionListener
 {
-	
+
+	private static final long serialVersionUID = 1L;
+
+	private String screenName = "LiTHiA Chat Client";
+
+	private JTextArea chatRoom = new JTextArea(30, 64);
+	private JTextField chatBar = new JTextField(64);
+
 	static Socket socket;
-	private static int id;
-	private static String name;
-	private static Scanner scan = new Scanner(System.in);
-	private static Thread chatThread;
-	
+	private int id;
+	private String name;
+	private Thread chatThread;
+
 	private static String prefix = "Client";
 	
-	public static void main(String[] args)
+	public Client()
 	{
-		ReaderUtil.debug = Boolean.parseBoolean(args[0]);
-		WriterUtil.debug = Boolean.parseBoolean(args[0]);
+		chatRoom.setEditable(false);
+		chatRoom.setBackground(Color.WHITE);
+		chatRoom.setLineWrap(true);
+		chatRoom.setWrapStyleWord(true);
+		chatBar.addActionListener(this);
 		
-		String ip = null;
-		int port = 0;
+		Container content = getContentPane();
+		content.add(new JScrollPane(chatRoom), BorderLayout.CENTER);
+		content.add(chatBar, BorderLayout.SOUTH);
 		
+		setTitle(screenName);
+		setDefaultCloseOperation(EXIT_ON_CLOSE);
+		pack();
+		chatBar.requestFocusInWindow();
+		setVisible(true);
+	}
+	
+	public void actionPerformed(ActionEvent e)
+	{
 		try
 		{
-			ip = args[1];
-			port = Integer.parseInt(args[2]);
+			write(socket, name + "|" + id + ":chat:" + chatBar.getText());
 		}
-		catch(Exception e)
+		catch (IOException ex)
 		{
+			// TODO Auto-generated catch block
+			ex.printStackTrace();
 		}
 		
-		Logger.log(prefix, "Creating client...");
-		
+		chatBar.setText("");
+		chatBar.requestFocusInWindow();
+	}
+	
+	private void start(String ip, int port)
+	{
+		log(prefix, "Creating client...");
+
 		try
 		{
 			if(ip == null) ip = JOptionPane.showInputDialog("Enter IP:");
 			if(port == 0) port = Integer.parseInt(JOptionPane.showInputDialog("Enter Port:"));
-			Logger.log(prefix, "Connecting to " + ip + " on port " + port + ".");
+			log(prefix, "Connecting to " + ip + " on port " + port + ".");
 			socket = new Socket(ip, port);
-			Logger.log(prefix, "Socket created, connection complete.");
+			log(prefix, "Socket created, connection complete.");
 		}
-		catch(Exception e)
+		catch (Exception e)
 		{
 			e.printStackTrace();
 		}
 
 		try
 		{
-			Logger.log(prefix, "Listening for client assignment from server...");
-			
+			log(prefix, "Listening for client assignment from server...");
+
 			boolean active = true;
 			long pingTime = System.currentTimeMillis();
 			long pongTime = System.currentTimeMillis();
-			
-			Runnable r = () ->
-			{
-				try
-				{
-					String chat;
-					while((chat = scan.nextLine()) != null)
-					{
-						write(socket, name + "|" + id + ":chat:" + chat);
-					}
-				}
-				catch(Exception e)
-				{
-				}
-			};
-			
-			chatThread = new Thread(r, "Chat");
-			chatThread.start();
-			
-			while(active)
+
+			while (active)
 			{
 				String line = read(socket);
 				
-				if(line.contains("chpr:"))
+				if (line.contains("chpr:"))
 				{
-					Logger.log(prefix, "Received client assignment from server!");
+					log(prefix, "Received client assignment from server!");
 					id = Integer.parseInt(line.substring(5));
-					Logger.log(prefix, "Joined server with id " + id + ".");
-					
-					name = JOptionPane.showInputDialog("Desired client name:");
-					if(name.length() == 0) name = "Anonymous-" + id;
+					log(prefix, "Joined server with id " + id + ".");
 
-					Logger.log(prefix, "Set name to " + name + ".");
-					
+					name = JOptionPane.showInputDialog("Desired client name:");
+					if (name.length() == 0) name = "Anonymous-" + id;
+
+					log(prefix, "Set name to " + name + ".");
+
 					write(socket, name);
 				}
-				
-				if(line.contains("chat:"))
+
+				if (line.contains("chat:"))
 				{
 					line = line.substring(5);
 					String name = line.substring(0, line.indexOf(':'));
 					String msg = line.substring(line.indexOf(':') + 1);
-					
-					Logger.log("Chat", name + " > " + msg);
+
+					log("Chat", name + " > " + msg);
 				}
-				
-				if(line.contains("cnct:"))
+
+				if (line.contains("cnct:"))
 				{
 					String name = line.substring(5);
-					Logger.log("Chat", name + " connected.");
+					log("Chat", name + " connected.");
 				}
-				
-				if(line.contains("chdc:"))
+
+				if (line.contains("chdc:"))
 				{
 					String name = line.substring(5);
-					Logger.log("Chat", name + " disconnected.");
+					log("Chat", name + " disconnected.");
 				}
-				
-				if(line.equals("abort"))
+
+				if (line.equals("abort"))
 				{
-					Logger.log(prefix, "Terminating at request of server...");
+					log(prefix, "Terminating at request of server...");
 					write(socket, "abort " + name + "|" + id);
-					
+
 					active = false;
 				}
-				
-				if(System.currentTimeMillis() - pingTime > 5000)
+
+				if (System.currentTimeMillis() - pingTime > 5000)
 				{
 					write(socket, "ping");
 					pingTime = System.currentTimeMillis();
 				}
-				
-				if(line.equals("pong"))
+
+				if (line.equals("pong"))
 				{
 					pongTime = System.currentTimeMillis();
 				}
-				
-				if(System.currentTimeMillis() - pongTime > 15000)
+
+				if (System.currentTimeMillis() - pongTime > 15000)
 				{
-					Logger.log(prefix, "Server is not responding...");
-					Logger.log(prefix, "Client will now exit.");
-					
+					log(prefix, "Server is not responding...");
+					log(prefix, "Client will now exit.");
+
 					active = false;
 				}
-				
-				if(line.equals("quit"))
+
+				if (line.equals("quit"))
 				{
 					active = false;
 				}
-				
-				if(socket.isClosed() || !socket.isConnected() || !socket.isBound()) active = false;
-				
+
+				if (socket.isClosed() || !socket.isConnected() || !socket.isBound()) active = false;
+
 				Thread.sleep(50);
 			}
 		}
-		catch(Exception e)
+		catch (Exception e)
 		{
 			e.printStackTrace();
 		}
@@ -164,7 +182,7 @@ public class Client
 		{
 			try
 			{
-				if(socket != null) socket.close();
+				if (socket != null) socket.close();
 				System.in.close();
 				chatThread.join();
 			}
@@ -173,7 +191,36 @@ public class Client
 				e.printStackTrace();
 			}
 		}
-		
+
 		System.exit(0);
+	}
+	
+	public static void main(String[] args)
+	{
+		Client client = new Client();
+		
+		ReaderUtil.debug = Boolean.parseBoolean(args[0]);
+		WriterUtil.debug = Boolean.parseBoolean(args[0]);
+
+		String ip = null;
+		int port = 0;
+
+		try
+		{
+			ip = args[1];
+			port = Integer.parseInt(args[2]);
+		}
+		catch (Exception e)
+		{
+		}
+		
+		client.start(ip, port);
+	}
+	
+	private void log(String prefix, String msg)
+	{
+		chatRoom.setFont(new Font("Arial", Font.PLAIN, 16));
+		chatRoom.insert("[" + prefix + "] " + msg + "\n", chatRoom.getText().length());
+		chatRoom.setCaretPosition(chatRoom.getText().length());
 	}
 }
