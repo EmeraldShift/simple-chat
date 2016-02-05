@@ -40,7 +40,7 @@ public class Server
 						String chat;
 						while((chat = scan.nextLine()) != null)
 						{
-							ClientHandler.getInstance().processCommand(chat);
+							ClientHandler.getInstance().processCommand(chat, null);
 						}
 					}
 					catch(Exception e)
